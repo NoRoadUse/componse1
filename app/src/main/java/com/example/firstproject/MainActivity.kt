@@ -48,21 +48,17 @@ data class Message(
 fun MessageCard(message: Message) {
     Column {
         var starColor by remember { mutableStateOf(Color.Yellow.value) }
+        var starState by remember { mutableStateOf(false) }
+
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            if (starColor != Color.Yellow.value) {
-                Image(
-                    painter = painterResource(id = R.drawable.icon_start_full_24x24),
-                    contentDescription = "icon starts",
-                    colorFilter = ColorFilter.tint(Color(starColor))
-                )
-            } else {
-                Image(
-                    painter = painterResource(id = R.drawable.icon_start_full_24x24),
-                    contentDescription = "icon starts",
-                )
-            }
+            StarComponent(starState = starState, onStarStateChanged = { starState = it })
         }
-        Row(modifier = Modifier.padding(8.dp)) {
+        Row(
+            modifier = Modifier
+                .padding(8.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
             Image(
                 painter = painterResource(id = R.drawable.baseline_arrow_back_ios_new_24),
                 contentDescription = "test back icon",
@@ -92,4 +88,18 @@ fun MessageCard(message: Message) {
 @Composable
 fun PreviewMessageCard() {
     MessageCard(message = Message("preview test", "test 101"))
+}
+
+@Composable
+fun StarComponent(starState: Boolean, onStarStateChanged: (Boolean) -> Unit) {
+    Image(
+        painter = painterResource(id = if (starState) R.drawable.icon_start_hollow_24x24 else R.drawable.icon_start_full_24x24),
+        contentDescription = "icon starts",
+//        colorFilter = ColorFilter.tint(color),
+        modifier = Modifier
+            .size(80.dp)
+            .clickable {
+                onStarStateChanged.invoke(starState.not())
+            },
+    )
 }
