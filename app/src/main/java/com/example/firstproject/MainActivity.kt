@@ -2,6 +2,7 @@ package com.example.firstproject
 
 import android.os.Bundle
 import android.util.Log
+import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.Animatable
@@ -23,6 +24,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitDragOrCancellation
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +36,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -46,19 +53,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.consumeAllChanges
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.example.firstproject.ui.theme.FirstProjectTheme
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,6 +86,7 @@ data class Message(
     val name: String, val value: String
 )
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun MessageCard(message: Message) {
 
@@ -84,6 +98,8 @@ fun MessageCard(message: Message) {
             var starColor by remember { mutableStateOf(Color.Yellow) }
             var starState by remember { mutableStateOf(false) }
             var isShowDefault by remember { mutableStateOf(false) }
+            var offsetX by remember { mutableStateOf(0f) }
+            var offsetY by remember { mutableStateOf(0f) }
 
             val interactionSource = MutableInteractionSource()
             val coroutineScope = rememberCoroutineScope()
@@ -96,7 +112,9 @@ fun MessageCard(message: Message) {
                 Image(
                     painter = painterResource(id = starResource),
                     contentDescription = "icon starts",
-                    colorFilter = if (isShowDefault && starColor != Color.Yellow)  ColorFilter.tint(starColor) else null,
+                    colorFilter = if (isShowDefault && starColor != Color.Yellow) ColorFilter.tint(
+                        starColor
+                    ) else null,
                     modifier = Modifier
                         .size(80.dp)
                         .rotate(currentRotation)
@@ -105,6 +123,42 @@ fun MessageCard(message: Message) {
                             starState = starState.not()
                             starResource =
                                 if (starState) R.drawable.icon_start_full_24x24 else R.drawable.icon_start_hollow_24x24
+                        }
+                        .offset {
+                            Log.e("", "${offsetX} ${offsetY} ${density.toInt()}")
+                            IntOffset(offsetX.roundToInt(), offsetY.roundToInt())
+                        }
+                        .pointerInput(Unit) {
+                            detectDragGestures(onDragEnd = {
+                                offsetX = 0f
+                                offsetY = 0f
+                            }, onDrag = { change, dragAmount ->
+                                change.consume()
+                                offsetX += dragAmount.x
+                                offsetY += dragAmount.y
+                                isShowDefault = true
+
+                                val sum = (offsetX + offsetY).toInt()
+
+                                starColor =
+                                    when (sum) {
+                                        in -1000..-26 -> {
+                                            Color.Blue
+                                        }
+
+                                        in 100..470 -> {
+                                            Color.Green
+                                        }
+
+                                        in 480..1000 -> {
+                                            Color.Red
+                                        }
+
+                                        else -> {
+                                            Color.Yellow
+                                        }
+                                    }
+                            })
                         },
                 )
             }
