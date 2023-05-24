@@ -18,8 +18,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -72,106 +75,114 @@ data class Message(
 
 @Composable
 fun MessageCard(message: Message) {
-    Column {
-        var starColor by remember { mutableStateOf(Color.Yellow) }
-        var starState by remember { mutableStateOf(false) }
-        var isShowDefault by remember { mutableStateOf(false) }
 
-        val interactionSource = MutableInteractionSource()
-        val coroutineScope = rememberCoroutineScope()
-        var currentRotation by remember { mutableStateOf(0f) }
-        val rotation = remember { Animatable(currentRotation) }
-
-
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-//            StarComponent(
-//                starState = starState,
-//                onStarStateChanged = { starState = it },
-//                startColor = starColor
-//            )
-            Image(
-                painter = painterResource(id = if (starState) R.drawable.icon_start_hollow_24x24 else R.drawable.icon_start_full_24x24),
-                contentDescription = "icon starts",
-                colorFilter = ColorFilter.tint(starColor),
-                modifier = Modifier
-                    .size(80.dp)
-                    .rotate(currentRotation)
-                    .clickable(interactionSource = interactionSource, indication = null) {
-                        isShowDefault = true
-                        starState = starState.not()
-                    },
-            )
-        }
-        Row(
-            modifier = Modifier
-                .padding(8.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            val interactionSource = MutableInteractionSource()
-            Image(
-                painter = painterResource(id = R.drawable.baseline_arrow_back_ios_new_24),
-                contentDescription = "test back icon",
-                Modifier.clickable(interactionSource = interactionSource, indication = null) {
-                    Log.d("J", "right")
-                    isShowDefault = true
-                    coroutineScope.launch {
-                        rotation.animateTo(
-                            currentRotation - 30f,
-                            tween(durationMillis = 1000, easing = LinearOutSlowInEasing)
-                        ) {
-                            currentRotation = value
-                        }
-                    }
-                }
-            )
-            AnimatedVisibility(
-                visible = isShowDefault,
-                enter = fadeIn(initialAlpha = 0.4f),
-                exit = fadeOut(animationSpec = tween(250))
-            ) {
-                Text(
-                    text = message.value,
-                    modifier = Modifier.clickable(
-                        interactionSource = interactionSource,
-                        indication = null
-                    ) {
-                        starColor = Color.Yellow
-                        currentRotation = 0f
-                        isShowDefault = false
-                    })
+    Card(Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            var starResource by remember {
+                mutableStateOf(R.drawable.icon_start_hollow_24x24)
             }
-            Image(
-                painter = painterResource(id = R.drawable.baseline_arrow_forward_ios_24),
-                contentDescription = "test back icon",
-                Modifier.clickable {
-                    Log.d("J", "left")
-                    isShowDefault = true
-                    coroutineScope.launch {
-                        rotation.animateTo(
-                            currentRotation + 30f,
-                            tween(durationMillis = 1000, easing = LinearOutSlowInEasing)
-                        ) {
-                            currentRotation = value
+            var starColor by remember { mutableStateOf(Color.Yellow) }
+            var starState by remember { mutableStateOf(false) }
+            var isShowDefault by remember { mutableStateOf(false) }
+
+            val interactionSource = MutableInteractionSource()
+            val coroutineScope = rememberCoroutineScope()
+            var currentRotation by remember { mutableStateOf(0f) }
+            val rotation = remember { Animatable(currentRotation) }
+
+
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Image(
+                    painter = painterResource(id = starResource),
+                    contentDescription = "icon starts",
+                    colorFilter = ColorFilter.tint(starColor),
+                    modifier = Modifier
+                        .size(80.dp)
+                        .rotate(currentRotation)
+                        .clickable(interactionSource = interactionSource, indication = null) {
+                            isShowDefault = true
+                            starState = starState.not()
+                            starResource =
+                                if (starState) R.drawable.icon_start_full_24x24 else R.drawable.icon_start_hollow_24x24
+                        },
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                val interactionSource = MutableInteractionSource()
+                Image(
+                    painter = painterResource(id = R.drawable.baseline_arrow_back_ios_new_24),
+                    contentDescription = "test back icon",
+                    Modifier.clickable(interactionSource = interactionSource, indication = null) {
+                        Log.d("J", "right")
+                        isShowDefault = true
+                        coroutineScope.launch {
+                            rotation.animateTo(
+                                currentRotation - 30f,
+                                tween(durationMillis = 1000, easing = LinearOutSlowInEasing)
+                            ) {
+                                currentRotation = value
+                            }
                         }
                     }
+                )
+                AnimatedVisibility(
+                    visible = isShowDefault,
+                    enter = fadeIn(initialAlpha = 0.4f),
+                    exit = fadeOut(animationSpec = tween(250))
+                ) {
+                    Text(
+                        text = message.value,
+                        modifier = Modifier.clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            starColor = Color.Yellow
+                            currentRotation = 0f
+                            starState = false
+                            starResource = R.drawable.icon_start_hollow_24x24
+                            isShowDefault = false
+                        })
                 }
-            )
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            colorBox(Color.Blue, colorCallback = {
-                starColor = it
-                isShowDefault = true
-            })
-            colorBox(Color.Yellow, colorCallback = {
-                starColor = it
-                isShowDefault = true
-            })
-            colorBox(Color.Red, colorCallback = {
-                starColor = it
-                isShowDefault = true
-            })
+                Image(
+                    painter = painterResource(id = R.drawable.baseline_arrow_forward_ios_24),
+                    contentDescription = "test back icon",
+                    Modifier.clickable {
+                        Log.d("J", "left")
+                        isShowDefault = true
+                        coroutineScope.launch {
+                            rotation.animateTo(
+                                currentRotation + 30f,
+                                tween(durationMillis = 1000, easing = LinearOutSlowInEasing)
+                            ) {
+                                currentRotation = value
+                            }
+                        }
+                    }
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                colorBox(Color.Blue, colorCallback = {
+                    starColor = it
+                    isShowDefault = true
+                })
+                colorBox(Color.Green, colorCallback = {
+                    starColor = it
+                    isShowDefault = true
+                })
+                colorBox(Color.Red, colorCallback = {
+                    starColor = it
+                    isShowDefault = true
+                })
+            }
         }
     }
 
@@ -184,43 +195,16 @@ fun PreviewMessageCard() {
 }
 
 @Composable
-fun StarComponent(starState: Boolean, onStarStateChanged: (Boolean) -> Unit, startColor: Color) {
-
-    val interactionSource = MutableInteractionSource()
-    val coroutineScope = rememberCoroutineScope()
-    var currentRotation by remember { mutableStateOf(0f) }
-    val rotation = remember { Animatable(currentRotation) }
-
-    Image(
-        painter = painterResource(id = if (starState) R.drawable.icon_start_hollow_24x24 else R.drawable.icon_start_full_24x24),
-        contentDescription = "icon starts",
-        colorFilter = ColorFilter.tint(startColor),
-        modifier = Modifier
-            .size(80.dp)
-            .rotate(currentRotation)
-            .clickable(interactionSource = interactionSource, indication = null) {
-                onStarStateChanged.invoke(starState.not())
-                coroutineScope.launch {
-                    rotation.animateTo(
-                        currentRotation + 30f,
-                        tween(durationMillis = 1000, easing = LinearOutSlowInEasing)
-                    ) {
-                        currentRotation = value
-                    }
-                }
-            },
-    )
-}
-
-@Composable
 fun colorBox(color: Color, colorCallback: (Color) -> Unit) {
     val interactionSource = MutableInteractionSource()
     val coroutineScope = rememberCoroutineScope()
 
     Box(
         Modifier
-            .size(48.dp)
+            .size(80.dp)
             .background(color = color)
+            .border(BorderStroke(2.dp, Color.Black))
+            .border(BorderStroke(8.dp, Color.White))
             .clickable(interactionSource = interactionSource, indication = null) {
                 coroutineScope.launch {
                     colorCallback.invoke(color)
