@@ -90,13 +90,13 @@ fun MessageCard(message: Message) {
             var currentRotation by remember { mutableStateOf(0f) }
             val rotation = remember { Animatable(currentRotation) }
 
-
+            ColorFilter
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 Image(
                     painter = painterResource(id = starResource),
                     contentDescription = "icon starts",
-                    colorFilter = ColorFilter.tint(starColor),
+                    colorFilter = if (isShowDefault && starColor != Color.Yellow)  ColorFilter.tint(starColor) else null,
                     modifier = Modifier
                         .size(80.dp)
                         .rotate(currentRotation)
