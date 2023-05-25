@@ -2,21 +2,13 @@ package com.example.firstproject
 
 import android.os.Bundle
 import android.util.Log
-import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.Animatable
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationState
-import androidx.compose.animation.core.EaseInBack
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -24,52 +16,33 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.awaitDragOrCancellation
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.consumeAllChanges
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.pointerInteropFilter
-import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.example.firstproject.ui.theme.FirstProjectTheme
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -86,7 +59,6 @@ data class Message(
     val name: String, val value: String
 )
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun MessageCard(message: Message) {
 
@@ -97,6 +69,7 @@ fun MessageCard(message: Message) {
             }
             var starColor by remember { mutableStateOf(Color.Yellow) }
             var starState by remember { mutableStateOf(false) }
+            var starRefresh by remember { mutableStateOf(false) }
             var isShowDefault by remember { mutableStateOf(false) }
             var offsetX by remember { mutableStateOf(0f) }
             var offsetY by remember { mutableStateOf(0f) }
@@ -106,61 +79,66 @@ fun MessageCard(message: Message) {
             var currentRotation by remember { mutableStateOf(0f) }
             val rotation = remember { Animatable(currentRotation) }
 
-            ColorFilter
-
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Image(
-                    painter = painterResource(id = starResource),
-                    contentDescription = "icon starts",
-                    colorFilter = if (isShowDefault && starColor != Color.Yellow) ColorFilter.tint(
-                        starColor
-                    ) else null,
-                    modifier = Modifier
-                        .size(80.dp)
-                        .rotate(currentRotation)
-                        .clickable(interactionSource = interactionSource, indication = null) {
-                            isShowDefault = true
-                            starState = starState.not()
-                            starResource =
-                                if (starState) R.drawable.icon_start_full_24x24 else R.drawable.icon_start_hollow_24x24
-                        }
-                        .offset {
-                            Log.e("", "${offsetX} ${offsetY} ${density.toInt()}")
-                            IntOffset(offsetX.roundToInt(), offsetY.roundToInt())
-                        }
-                        .pointerInput(Unit) {
-                            detectDragGestures(onDragEnd = {
-                                offsetX = 0f
-                                offsetY = 0f
-                            }, onDrag = { change, dragAmount ->
-                                change.consume()
-                                offsetX += dragAmount.x
-                                offsetY += dragAmount.y
+                Crossfade(targetState = starResource, animationSpec = tween(1000)) {
+                    Image(
+                        painter = painterResource(id = it),
+                        contentDescription = "icon starts",
+                        colorFilter = if (isShowDefault && starColor != Color.Yellow) ColorFilter.tint(
+                            starColor
+                        ) else null,
+                        modifier = Modifier
+                            .size(80.dp)
+                            .rotate(currentRotation)
+                            .clickable(interactionSource = interactionSource, indication = null) {
                                 isShowDefault = true
+                                starRefresh = false
+                                starState = starState.not()
+                                starResource =
+                                    if (starState) R.drawable.icon_start_full_24x24 else R.drawable.icon_start_hollow_24x24
+                                starRefresh = true
+                            }
+                            .offset {
+                                IntOffset(offsetX.roundToInt(), offsetY.roundToInt())
+                            }
+                            .pointerInput(Unit) {
+                                detectDragGestures(onDragEnd = {
+                                    offsetX = 0f
+                                    offsetY = 0f
+                                }, onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    offsetX += dragAmount.x
+                                    offsetY += dragAmount.y
+                                    isShowDefault = true
 
-                                val sum = (offsetX + offsetY).toInt()
+                                    Log.d("", "$offsetX $offsetY")
 
-                                starColor =
-                                    when (sum) {
-                                        in -1000..-26 -> {
-                                            Color.Blue
-                                        }
+                                    if (offsetY > 150f) {
+                                        starColor =
+                                            when (offsetX) {
+                                                in -1000f..-190f -> {
+                                                    Color.Blue
+                                                }
 
-                                        in 100..470 -> {
-                                            Color.Green
-                                        }
+                                                in -100f..100f -> {
+                                                    Color.Green
+                                                }
 
-                                        in 480..1000 -> {
-                                            Color.Red
-                                        }
+                                                in 200f..400f -> {
+                                                    Color.Red
+                                                }
 
-                                        else -> {
-                                            Color.Yellow
-                                        }
+                                                else -> {
+                                                    Color.Yellow
+                                                }
+                                            }
                                     }
-                            })
-                        },
-                )
+                                })
+                            },
+                    )
+                }
+
+
             }
             Row(
                 modifier = Modifier
@@ -168,7 +146,6 @@ fun MessageCard(message: Message) {
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
-                val interactionSource = MutableInteractionSource()
                 Image(
                     painter = painterResource(id = R.drawable.baseline_arrow_back_ios_new_24),
                     contentDescription = "test back icon",
@@ -187,7 +164,7 @@ fun MessageCard(message: Message) {
                 )
                 AnimatedVisibility(
                     visible = isShowDefault,
-                    enter = fadeIn(initialAlpha = 0.4f),
+                    enter = fadeIn(initialAlpha = 0.1f),
                     exit = fadeOut(animationSpec = tween(250))
                 ) {
                     Text(
@@ -224,15 +201,15 @@ fun MessageCard(message: Message) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                colorBox(Color.Blue, colorCallback = {
+                ColorBox(Color.Blue, colorCallback = {
                     starColor = it
                     isShowDefault = true
                 })
-                colorBox(Color.Green, colorCallback = {
+                ColorBox(Color.Green, colorCallback = {
                     starColor = it
                     isShowDefault = true
                 })
-                colorBox(Color.Red, colorCallback = {
+                ColorBox(Color.Red, colorCallback = {
                     starColor = it
                     isShowDefault = true
                 })
@@ -249,7 +226,7 @@ fun PreviewMessageCard() {
 }
 
 @Composable
-fun colorBox(color: Color, colorCallback: (Color) -> Unit) {
+fun ColorBox(color: Color, colorCallback: (Color) -> Unit) {
     val interactionSource = MutableInteractionSource()
     val coroutineScope = rememberCoroutineScope()
 
