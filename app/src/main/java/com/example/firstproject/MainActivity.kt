@@ -4,13 +4,10 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -36,9 +33,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
@@ -63,12 +66,22 @@ data class Message(
 fun MessageCard(message: Message) {
 
     Card(Modifier.padding(8.dp)) {
+        val star =
+            Rect(Offset(430f, 44f), Size(80.dp.value, 80.dp.value))
+
+        val box1 =
+            Rect(Offset(127f, 374f), Size(80.dp.value, 80.dp.value))
+        val box2 =
+            Rect(Offset(430f, 374f), Size(80.dp.value, 80.dp.value))
+        val box3 =
+            Rect(Offset(733f, 374f), Size(80.dp.value, 80.dp.value))
+
+
         Column(modifier = Modifier.padding(8.dp)) {
             var starResource by remember {
                 mutableStateOf(R.drawable.icon_start_hollow_24x24)
             }
             var starColor by remember { mutableStateOf(Color.Yellow) }
-            var starState by remember { mutableStateOf(false) }
             var starRefresh by remember { mutableStateOf(false) }
             var isShowDefault by remember { mutableStateOf(false) }
             var offsetX by remember { mutableStateOf(0f) }
@@ -78,65 +91,70 @@ fun MessageCard(message: Message) {
             val coroutineScope = rememberCoroutineScope()
             var currentRotation by remember { mutableStateOf(0f) }
             val rotation = remember { Animatable(currentRotation) }
+            val alpha: Float by animateFloatAsState(if (isShowDefault) 1f else 0f)
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Crossfade(targetState = starResource, animationSpec = tween(1000)) {
-                    Image(
-                        painter = painterResource(id = it),
-                        contentDescription = "icon starts",
-                        colorFilter = if (isShowDefault && starColor != Color.Yellow) ColorFilter.tint(
-                            starColor
-                        ) else null,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .rotate(currentRotation)
-                            .clickable(interactionSource = interactionSource, indication = null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        this.rotationZ = currentRotation
+                    }, horizontalArrangement = Arrangement.Center
+            ) {
+                Image(
+                    painter = painterResource(id = starResource),
+                    contentDescription = "icon starts",
+                    colorFilter = if (isShowDefault && starColor != Color.Yellow) ColorFilter.tint(
+                        starColor
+                    ) else null,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .rotate(currentRotation)
+                        .clickable(interactionSource = interactionSource, indication = null) {
+                            isShowDefault = true
+                            starRefresh = false
+                            starResource =
+                                if (starResource == R.drawable.icon_start_hollow_24x24) R.drawable.icon_start_full_24x24 else R.drawable.icon_start_hollow_24x24
+                            starRefresh = true
+                        }
+//                        .onGloballyPositioned { coordinates ->
+//                            Log.e("test", "star ${coordinates.positionInRoot()}")
+//                        }
+                        .offset {
+                            IntOffset(offsetX.roundToInt(), offsetY.roundToInt())
+                        }
+                        .pointerInput(Unit) {
+                            detectDragGestures(onDragEnd = {
+                                offsetX = 0f
+                                offsetY = 0f
+                            }, onDrag = { change, dragAmount ->
+                                change.consume()
+                                offsetX += dragAmount.x
+                                offsetY += dragAmount.y
                                 isShowDefault = true
-                                starRefresh = false
-                                starState = starState.not()
-                                starResource =
-                                    if (starState) R.drawable.icon_start_full_24x24 else R.drawable.icon_start_hollow_24x24
-                                starRefresh = true
-                            }
-                            .offset {
-                                IntOffset(offsetX.roundToInt(), offsetY.roundToInt())
-                            }
-                            .pointerInput(Unit) {
-                                detectDragGestures(onDragEnd = {
-                                    offsetX = 0f
-                                    offsetY = 0f
-                                }, onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    offsetX += dragAmount.x
-                                    offsetY += dragAmount.y
-                                    isShowDefault = true
 
-                                    Log.d("", "$offsetX $offsetY")
+                                Log.d("", "$offsetX $offsetY")
 
-                                    if (offsetY > 150f) {
-                                        starColor =
-                                            when (offsetX) {
-                                                in -1000f..-190f -> {
-                                                    Color.Blue
-                                                }
-
-                                                in -100f..100f -> {
-                                                    Color.Green
-                                                }
-
-                                                in 200f..400f -> {
-                                                    Color.Red
-                                                }
-
-                                                else -> {
-                                                    Color.Yellow
-                                                }
-                                            }
+                                val starMove = star.translate(Offset(offsetX, offsetY))
+                                starColor = when {
+                                    starMove.overlaps(box1) -> {
+                                        Color.Blue
                                     }
-                                })
-                            },
-                    )
-                }
+
+                                    starMove.overlaps(box2) -> {
+                                        Color.Green
+                                    }
+
+                                    starMove.overlaps(box3) -> {
+                                        Color.Red
+                                    }
+
+                                    else -> {
+                                        starColor
+                                    }
+                                }
+                            })
+                        },
+                )
 
 
             }
@@ -162,24 +180,25 @@ fun MessageCard(message: Message) {
                         }
                     }
                 )
-                AnimatedVisibility(
-                    visible = isShowDefault,
-                    enter = fadeIn(initialAlpha = 0.1f),
-                    exit = fadeOut(animationSpec = tween(250))
-                ) {
+                if (isShowDefault) {
                     Text(
                         text = message.value,
-                        modifier = Modifier.clickable(
-                            interactionSource = interactionSource,
-                            indication = null
-                        ) {
-                            starColor = Color.Yellow
-                            currentRotation = 0f
-                            starState = false
-                            starResource = R.drawable.icon_start_hollow_24x24
-                            isShowDefault = false
-                        })
+                        modifier = Modifier
+                            .graphicsLayer {
+                                this.alpha = alpha
+
+                            }
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
+                                starColor = Color.Yellow
+                                currentRotation = 0f
+                                starResource = R.drawable.icon_start_hollow_24x24
+                                isShowDefault = false
+                            })
                 }
+
                 Image(
                     painter = painterResource(id = R.drawable.baseline_arrow_forward_ios_24),
                     contentDescription = "test back icon",
@@ -240,5 +259,8 @@ fun ColorBox(color: Color, colorCallback: (Color) -> Unit) {
                 coroutineScope.launch {
                     colorCallback.invoke(color)
                 }
+            }
+            .onGloballyPositioned { coordinates ->
+                Log.e("test", "${coordinates.positionInRoot().x} ${coordinates.positionInRoot().y}")
             })
 }
